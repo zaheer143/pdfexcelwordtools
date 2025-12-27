@@ -1,0 +1,275 @@
+"use client";
+
+import { useRef, useState } from "react";
+
+export default function BulkCompress() {
+  const inputRef = useRef(null);
+  const [zipFile, setZipFile] = useState(null);
+  const [level, setLevel] = useState("recommended");
+  const [loading, setLoading] = useState(false);
+
+  const clear = () => {
+    setZipFile(null);
+    if (inputRef.current) inputRef.current.value = "";
+  };
+
+  const convert = async () => {
+    if (!zipFile) return alert("Upload a ZIP file that contains PDFs");
+
+    setLoading(true);
+    try {
+      const base = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001";
+
+      const form = new FormData();
+      form.append("zip", zipFile);
+      form.append("level", level);
+
+      const res = await fetch(base + "/bulk-compress", {
+        method: "POST",
+        body: form,
+      });
+
+      if (!res.ok) {
+        const txt = await res.text().catch(() => "Bulk compression failed");
+        alert("Bulk compression failed:\n\n" + txt);
+        return;
+      }
+
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `bulk_compressed_${level}_${Date.now()}.zip`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+
+      clear();
+    } catch (err) {
+      console.error("Bulk compress error:", err);
+      alert("Something went wrong. See console for details.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div style={styles.page}>
+      <div style={styles.card}>
+        <div style={styles.header}>
+          <h1 style={styles.title}>Bulk Compress</h1>
+          <p style={styles.subtitle}>
+            Upload a ZIP of PDFs and download a ZIP of compressed PDFs — perfect for office work.
+          </p>
+        </div>
+
+        <div style={styles.uploadBox}>
+          <input
+            ref={inputRef}
+            type="file"
+            accept=".zip,application/zip,application/x-zip-compressed"
+            onChange={(e) => setZipFile(e.target.files?.[0] || null)}
+            style={styles.fileInput}
+          />
+
+          <div style={styles.filesList}>
+            {!zipFile ? (
+              <div style={styles.empty}>No ZIP selected — click to choose or drag & drop</div>
+            ) : (
+              <div style={styles.fileItem}>
+                <div style={styles.thumbWrapper}>
+                  <div style={styles.thumb}>ZIP</div>
+                </div>
+                <div style={styles.fileMeta}>
+                  <div style={styles.fileName}>{zipFile.name}</div>
+                  <div style={styles.fileSize}>{(zipFile.size / 1024).toFixed(1)} KB</div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div style={styles.field}>
+            <div style={styles.label}>Compression strength</div>
+            <select
+              value={level}
+              onChange={(e) => setLevel(e.target.value)}
+              style={styles.select}
+              disabled={loading}
+            >
+              <option value="light">Light (best quality)</option>
+              <option value="recommended">Recommended</option>
+              <option value="strong">Strong (smallest)</option>
+            </select>
+            <div style={styles.help}>Note: output size depends on PDF content (images compress more).</div>
+          </div>
+
+          <div style={styles.actions}>
+            <button
+              onClick={() => inputRef.current && inputRef.current.click()}
+              style={styles.uploadBtn}
+              disabled={loading}
+            >
+              Select ZIP
+            </button>
+
+            <button onClick={convert} style={styles.convertBtn} disabled={loading || !zipFile}>
+              {loading ? <Loader /> : "Compress ZIP"}
+            </button>
+          </div>
+
+          <div style={styles.smallActions}>
+            <button onClick={clear} style={styles.linkBtn} disabled={loading}>
+              Clear
+            </button>
+            <a href="/" style={styles.backLink}>Back Home</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Loader() {
+  return (
+    <div style={styles.loaderWrap}>
+      <div style={styles.loader} />
+      <span style={{ marginLeft: 8 }}>Processing...</span>
+    </div>
+  );
+}
+
+const styles = {
+  page: {
+    minHeight: "100vh",
+    display: "flex",
+    alignItems: "flex-start",
+    justifyContent: "center",
+    paddingTop: 48,
+    background: "linear-gradient(180deg,#F6F5FF, #FFF)",
+  },
+  card: {
+    width: 560,
+    background: "#ffffff",
+    padding: 28,
+    borderRadius: 18,
+    boxShadow: "0 10px 30px rgba(79,49,120,0.08)",
+    textAlign: "left",
+  },
+  header: { marginBottom: 14, textAlign: "center" },
+  title: { fontSize: 26, fontWeight: 800, color: "#2a0b62", margin: 0 },
+  subtitle: { marginTop: 6, color: "#6b4aa3", fontSize: 13 },
+
+  uploadBox: { marginTop: 10 },
+  fileInput: { display: "none" },
+
+  filesList: {
+    minHeight: 140,
+    borderRadius: 12,
+    border: "1px dashed #e6dfff",
+    display: "flex",
+    flexDirection: "column",
+    padding: 12,
+    gap: 10,
+    alignItems: "stretch",
+    marginBottom: 12,
+    background: "#faf8ff",
+  },
+  empty: { color: "#8b68b9", fontSize: 14, padding: 24, textAlign: "center", width: "100%" },
+
+  fileItem: {
+    display: "flex",
+    gap: 12,
+    alignItems: "center",
+    background: "#fff",
+    padding: 8,
+    borderRadius: 10,
+    boxShadow: "0 3px 10px rgba(74,108,247,0.04)",
+  },
+  thumbWrapper: {
+    width: 64,
+    height: 48,
+    borderRadius: 8,
+    overflow: "hidden",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    background: "#f3eefc",
+  },
+  thumb: {
+    width: "100%",
+    height: "100%",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    fontWeight: 900,
+    color: "#2a0b62",
+    background: "#e2f2ff",
+    borderRadius: 8,
+  },
+  fileMeta: { display: "flex", flexDirection: "column", justifyContent: "center" },
+  fileName: { fontSize: 13, fontWeight: 700, color: "#3b1a6a" },
+  fileSize: { fontSize: 12, color: "#8a6fb8" },
+
+  field: { display: "flex", flexDirection: "column", gap: 6, marginTop: 8 },
+  label: { fontSize: 12, fontWeight: 700, color: "#4b3b7d" },
+  select: { padding: "10px 12px", borderRadius: 12, border: "1px solid #d0c2ff", outline: "none", fontSize: 13, background: "#fff" },
+  help: { fontSize: 12, color: "#8a6fb8" },
+
+  actions: { display: "flex", gap: 12, marginTop: 14 },
+  uploadBtn: {
+    flex: 1,
+    padding: "12px 14px",
+    borderRadius: 12,
+    border: "1px solid rgba(74,108,247,0.12)",
+    background: "transparent",
+    color: "#4a6cf7",
+    fontWeight: 700,
+    cursor: "pointer",
+  },
+  convertBtn: {
+    flex: 1,
+    padding: "12px 14px",
+    borderRadius: 12,
+    border: "none",
+    background: "linear-gradient(90deg,#7b3cf5,#ff4db2)",
+    color: "#fff",
+    fontWeight: 800,
+    cursor: "pointer",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  smallActions: { display: "flex", justifyContent: "space-between", marginTop: 12, alignItems: "center" },
+  linkBtn: { background: "transparent", border: "none", color: "#6b4aa3", textDecoration: "underline", cursor: "pointer" },
+  backLink: {
+    color: "#ffffff",
+    textDecoration: "none",
+    background: "linear-gradient(90deg,#5e2bd1,#b84bb7)",
+    padding: "6px 10px",
+    borderRadius: 8,
+    fontWeight: 700,
+    fontSize: 13,
+  },
+
+  loaderWrap: { display: "flex", alignItems: "center", color: "#fff", fontWeight: 800, fontSize: 14 },
+  loader: { width: 18, height: 18, borderRadius: 18, background: "#fff", boxShadow: "0 0 0 0 rgba(255,255,255,0.35)", animation: "pulse 1s infinite" },
+};
+
+if (typeof window !== "undefined") {
+  const styleId = "bulk-compress-loader-style";
+  if (!document.getElementById(styleId)) {
+    const s = document.createElement("style");
+    s.id = styleId;
+    s.innerHTML = `
+      @keyframes pulse {
+        0% { transform: scale(0.9); opacity: 0.8; box-shadow: 0 0 0 0 rgba(255,255,255,0.35); }
+        70% { transform: scale(1.05); opacity: 1; box-shadow: 0 0 0 8px rgba(255,255,255,0); }
+        100% { transform: scale(0.9); opacity: 0.8; box-shadow: 0 0 0 0 rgba(255,255,255,0.35); }
+      }
+    `;
+    document.head.appendChild(s);
+  }
+}
