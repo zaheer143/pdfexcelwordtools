@@ -6,133 +6,75 @@ const app = express();
 app.use(cors());
 app.use(express.json({ limit: "20mb" }));
 
-// ---------- BASIC HEALTH ----------
+// Base
 app.get("/", (req, res) => res.send("OK"));
 app.get("/health", (req, res) => res.json({ ok: true }));
 
-// ---------- SAFE CORE ROUTES ----------
-app.use("/merge-pdf", async (req, res, next) =>
-  (await import("./routes/mergePdf.js")).default(req, res, next)
-);
+// Helper: lazy-load routers safely on Linux
+const mount = (path, file) => {
+  app.use(path, async (req, res, next) => {
+    try {
+      const mod = await import(file);
+      return mod.default(req, res, next);
+    } catch (e) {
+      console.error("Route load failed:", path, file, e);
+      return res.status(500).json({ error: `Route load failed: ${path}` });
+    }
+  });
+};
 
-app.use("/split-pdf", async (req, res, next) =>
-  (await import("./routes/splitPdf.js")).default(req, res, next)
-);
+// ---- PDF core ----
+mount("/merge-pdf", "./routes/mergePdf.js");
+mount("/split-pdf", "./routes/splitPdf.js");
+mount("/protect-pdf", "./routes/protectPdf.js");
+mount("/unlock-pdf", "./routes/unlockPdf.js");
+mount("/rotate-pdf", "./routes/rotatePdf.js");
 
-app.use("/protect-pdf", async (req, res, next) =>
-  (await import("./routes/protectPdf.js")).default(req, res, next)
-);
+// ---- Image ----
+mount("/pdf-to-jpg", "./routes/pdfToJpg.js");
+mount("/pdf-to-png", "./routes/pdfToPng.js");
+mount("/jpg-to-pdf", "./routes/jpgToPdf.js");
+mount("/extract-images", "./routes/extractImages.js");
 
-app.use("/unlock-pdf", async (req, res, next) =>
-  (await import("./routes/unlockPdf.js")).default(req, res, next)
-);
+// ---- Compress / repair / metadata ----
+mount("/compress-pdf", "./routes/compressPdf.js");
+mount("/compress-to-size", "./routes/compressToSize.js");
+mount("/pdf-repair", "./routes/pdfRepair.js");
+mount("/remove-metadata", "./routes/removeMetadata.js");
+mount("/grayscale-pdf", "./routes/grayscalePdf.js");
+mount("/flatten-pdf", "./routes/flattenPdf.js");
+mount("/pdf-to-pdfa", "./routes/pdfToPdfA.js");
+mount("/delete-blank-pages", "./routes/deleteBlankPages.js");
+mount("/remove-pages", "./routes/removePagesPdf.js");
+mount("/add-page-numbers", "./routes/addPageNumbersPdf.js");
+mount("/watermark-pdf", "./routes/watermarkPdf.js");
 
-app.use("/rotate-pdf", async (req, res, next) =>
-  (await import("./routes/rotatePdf.js")).default(req, res, next)
-);
+// ---- Office (LibreOffice) ----
+mount("/word-to-pdf", "./routes/wordToPdf.js");
+mount("/excel-to-pdf", "./routes/excelToPdf.js");
+mount("/ppt-to-pdf", "./routes/pptToPdf.js");
+mount("/pdf-to-excel", "./routes/pdfToExcel.js");
 
-// ---------- IMAGE ----------
-app.use("/pdf-to-jpg", async (req, res, next) =>
-  (await import("./routes/pdfToJpg.js")).default(req, res, next)
-);
+// ---- OCR ----
+mount("/ocr-pdf", "./routes/ocrPdf.js");
 
-app.use("/pdf-to-png", async (req, res, next) =>
-  (await import("./routes/pdfToPng.js")).default(req, res, next)
-);
+// ---- Bulk ----
+mount("/bulk-compress", "./routes/bulkCompressZip.js");
+mount("/bulk-grayscale", "./routes/bulkGrayscaleZip.js");
+mount("/bulk-watermark-pdf", "./routes/bulkWatermarkPdf.js");
+mount("/bulk-rename-pdf", "./routes/bulkRenamePdf.js");
+mount("/bulk-merge-pdf", "./routes/bulkMergePdf.js");
+mount("/bulk-split-pdf", "./routes/bulkSplitPdf.js");
+mount("/bulk-rotate-pdf", "./routes/bulkRotatePdf.js");
+mount("/bulk-page-numbers-pdf", "./routes/bulkPageNumbersPdf.js");
+mount("/bulk-protect-pdf", "./routes/bulkProtectPdf.js");
+mount("/bulk-redact-pdf", "./routes/bulkRedactPdf.js");
 
-app.use("/jpg-to-pdf", async (req, res, next) =>
-  (await import("./routes/jpgToPdf.js")).default(req, res, next)
-);
+// ---- Disabled / dangerous (do NOT mount on Linux now) ----
+// pdfToWord was Windows-only and previously caused linux crash loops.
+// mount("/pdf-to-word", "./routes/pdfToWord.js");
 
-// ---------- OFFICE (LIBREOFFICE) ----------
-app.use("/word-to-pdf", async (req, res, next) =>
-  (await import("./routes/wordToPdf.js")).default(req, res, next)
-);
-
-app.use("/excel-to-pdf", async (req, res, next) =>
-  (await import("./routes/excelToPdf.js")).default(req, res, next)
-);
-
-app.use("/ppt-to-pdf", async (req, res, next) =>
-  (await import("./routes/pptToPdf.js")).default(req, res, next)
-);
-
-app.use("/pdf-to-excel", async (req, res, next) =>
-  (await import("./routes/pdfToExcel.js")).default(req, res, next)
-);
-
-// ---------- ADVANCED PDF ----------
-app.use("/watermark-pdf", async (req, res, next) =>
-  (await import("./routes/watermarkPdf.js")).default(req, res, next)
-);
-
-app.use("/remove-pages", async (req, res, next) =>
-  (await import("./routes/removePagesPdf.js")).default(req, res, next)
-);
-
-app.use("/add-page-numbers", async (req, res, next) =>
-  (await import("./routes/addPageNumbersPdf.js")).default(req, res, next)
-);
-
-app.use("/delete-blank-pages", async (req, res, next) =>
-  (await import("./routes/deleteBlankPages.js")).default(req, res, next)
-);
-
-app.use("/flatten-pdf", async (req, res, next) =>
-  (await import("./routes/flattenPdf.js")).default(req, res, next)
-);
-
-app.use("/pdf-to-pdfa", async (req, res, next) =>
-  (await import("./routes/pdfToPdfA.js")).default(req, res, next)
-);
-
-app.use("/compress-pdf", async (req, res, next) =>
-  (await import("./routes/compressPdf.js")).default(req, res, next)
-);
-
-app.use("/compress-to-size", async (req, res, next) =>
-  (await import("./routes/compressToSize.js")).default(req, res, next)
-);
-
-app.use("/grayscale-pdf", async (req, res, next) =>
-  (await import("./routes/grayscalePdf.js")).default(req, res, next)
-);
-
-app.use("/remove-metadata", async (req, res, next) =>
-  (await import("./routes/removeMetadata.js")).default(req, res, next)
-);
-
-app.use("/pdf-repair", async (req, res, next) =>
-  (await import("./routes/pdfRepair.js")).default(req, res, next)
-);
-
-// ---------- OCR / AI ----------
-app.use("/ocr-pdf", async (req, res, next) =>
-  (await import("./routes/ocrPdf.js")).default(req, res, next)
-);
-
-// ---------- BULK ----------
-app.use("/bulk-merge", async (req, res, next) =>
-  (await import("./routes/bulkMergePdf.js")).default(req, res, next)
-);
-
-app.use("/bulk-split", async (req, res, next) =>
-  (await import("./routes/bulkSplitPdf.js")).default(req, res, next)
-);
-
-app.use("/bulk-rotate", async (req, res, next) =>
-  (await import("./routes/bulkRotatePdf.js")).default(req, res, next)
-);
-
-app.use("/bulk-compress", async (req, res, next) =>
-  (await import("./routes/bulkCompressZip.js")).default(req, res, next)
-);
-
-app.use("/bulk-watermark", async (req, res, next) =>
-  (await import("./routes/bulkWatermarkPdf.js")).default(req, res, next)
-);
-
-// ---------- START ----------
+// Start
 const PORT = process.env.PORT || 8080;
 app.listen(PORT, "0.0.0.0", () => {
   console.log("✅ Backend running on port", PORT);
