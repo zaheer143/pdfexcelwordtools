@@ -4,19 +4,28 @@ import dotenv from "dotenv";
 
 dotenv.config();
 
-// 🔴 IMPORTANT: pdfToWord is DISABLED (Windows-only, crashes Linux)
-// import pdfToWord from "./routes/pdfToWord.js";
+/**
+ * ❌ DISABLED ROUTES (cause Linux crash at startup)
+ * - pdfToWord (Windows-only)
+ * - mergePdf (uses OpenAI at import time)
+ * - pdfToJpgAI
+ * - compressPdfAI
+ * - pdfToPptAI
+ */
 
-import mergePdf from "./routes/mergePdf.js";
+// import pdfToWord from "./routes/pdfToWord.js";
+//
+// import mergePdf from "./routes/mergePdf.js";
+// import pdfToJpgAIRoutes from "./routes/pdfToJpgAI.js";
+// import compressPdfAIRoutes from "./routes/compressPdfAI.js";
+// import pdfToPptAIRoutes from "./routes/pdfToPptAI.js";
+
 import splitPdfRoutes from "./routes/splitPdf.js";
 import protectPdfRoutes from "./routes/protectPdf.js";
 import unlockPdfRoutes from "./routes/unlockPdf.js";
 import pdfToJpgRoutes from "./routes/pdfToJpg.js";
-import pdfToJpgAIRoutes from "./routes/pdfToJpgAI.js";
 import compressPdfRoutes from "./routes/compressPdf.js";
-import compressPdfAIRoutes from "./routes/compressPdfAI.js";
 import pdfToPptRoutes from "./routes/pdfToPpt.js";
-import pdfToPptAIRoutes from "./routes/pdfToPptAI.js";
 import jpgToPdfRoutes from "./routes/jpgToPdf.js";
 
 import extractImagesRoutes from "./routes/extractImages.js";
@@ -57,19 +66,24 @@ const app = express();
 app.use(cors());
 app.use(express.json({ limit: "10mb" }));
 
-// 🔴 pdfToWord DISABLED
+/**
+ * ❌ AI + Windows routes DISABLED
+ */
 // app.use("/", pdfToWord);
+// app.use("/", mergePdf);
+// app.use("/", pdfToJpgAIRoutes);
+// app.use("/", compressPdfAIRoutes);
+// app.use("/pdf-to-ppt-ai", pdfToPptAIRoutes);
 
-app.use("/", mergePdf);
+/**
+ * ✅ SAFE ROUTES (Linux-compatible)
+ */
 app.use("/", splitPdfRoutes);
 app.use("/", protectPdfRoutes);
 app.use("/", unlockPdfRoutes);
 app.use("/", pdfToJpgRoutes);
-app.use("/", pdfToJpgAIRoutes);
 app.use("/compress-pdf", compressPdfRoutes);
-app.use("/", compressPdfAIRoutes);
 app.use("/pdf-to-ppt", pdfToPptRoutes);
-app.use("/pdf-to-ppt-ai", pdfToPptAIRoutes);
 app.use("/jpg-to-pdf", jpgToPdfRoutes);
 app.use("/rotate-pdf", rotatePdfRoutes);
 
@@ -105,7 +119,9 @@ app.use("/bulk-page-numbers-pdf", bulkPageNumbersPdfRoutes);
 app.use("/bulk-protect-pdf", bulkProtectPdfRoutes);
 app.use("/bulk-redact-pdf", bulkRedactPdfRoutes);
 
-// ✅ REQUIRED FOR RAILWAY
+/**
+ * ✅ REQUIRED FOR RAILWAY
+ */
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
   console.log("Backend running on port", PORT);
