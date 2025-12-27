@@ -1,10 +1,12 @@
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
-dotenv.config();
-console.log("LIBREOFFICE_BIN from .env:", process.env.LIBREOFFICE_BIN);
 
-import pdfToWord from "./routes/pdfToWord.js";
+dotenv.config();
+
+// 🔴 IMPORTANT: pdfToWord is DISABLED (Windows-only, crashes Linux)
+// import pdfToWord from "./routes/pdfToWord.js";
+
 import mergePdf from "./routes/mergePdf.js";
 import splitPdfRoutes from "./routes/splitPdf.js";
 import protectPdfRoutes from "./routes/protectPdf.js";
@@ -50,13 +52,14 @@ import bulkPageNumbersPdfRoutes from "./routes/bulkPageNumbersPdf.js";
 import bulkProtectPdfRoutes from "./routes/bulkProtectPdf.js";
 import bulkRedactPdfRoutes from "./routes/bulkRedactPdf.js";
 
-
-
-
 const app = express();
-app.use(cors());
 
-app.use("/", pdfToWord);
+app.use(cors());
+app.use(express.json({ limit: "10mb" }));
+
+// 🔴 pdfToWord DISABLED
+// app.use("/", pdfToWord);
+
 app.use("/", mergePdf);
 app.use("/", splitPdfRoutes);
 app.use("/", protectPdfRoutes);
@@ -69,9 +72,6 @@ app.use("/pdf-to-ppt", pdfToPptRoutes);
 app.use("/pdf-to-ppt-ai", pdfToPptAIRoutes);
 app.use("/jpg-to-pdf", jpgToPdfRoutes);
 app.use("/rotate-pdf", rotatePdfRoutes);
-
-
-
 
 app.use("/extract-images", extractImagesRoutes);
 app.use("/word-to-pdf", wordToPdfRoutes);
@@ -105,20 +105,8 @@ app.use("/bulk-page-numbers-pdf", bulkPageNumbersPdfRoutes);
 app.use("/bulk-protect-pdf", bulkProtectPdfRoutes);
 app.use("/bulk-redact-pdf", bulkRedactPdfRoutes);
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-app.listen(3001, () => {
-  console.log("Backend running on http://localhost:3001");
+// ✅ REQUIRED FOR RAILWAY
+const PORT = process.env.PORT || 3001;
+app.listen(PORT, () => {
+  console.log("Backend running on port", PORT);
 });
